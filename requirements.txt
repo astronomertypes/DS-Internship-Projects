@@ -1,0 +1,16 @@
+pandas
+numpy
+scipy
+scikit-learn
+lightgbm
+shap
+lifelines
+causalml
+streamlit
+sqlalchemy
+psycopg2-binary
+matplotlib
+seaborn
+plotly
+pytest
+jupyter
