@@ -8,5 +8,12 @@
     "Hold-out PR-AUC": 0.6510085153114663,
     "Hold-out Brier score": 0.1376082306220166,
     "Positive rate": 0.2653698707936959
+  },
+  "Survival (Lifelines)": {
+    "KM median survival (months; None = more than half never churned)": null,
+    "Log-rank p-value (contract)": 0.0,
+    "Cox concordance (train)": 0.865396304147915,
+    "Cox concordance (held-out)": 0.8553970770986915,
+    "Customers used": 7032
   }
 }
