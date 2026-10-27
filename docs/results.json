@@ -15,5 +15,11 @@
     "Cox concordance (train)": 0.865396304147915,
     "Cox concordance (held-out)": 0.8553970770986915,
     "Customers used": 7032
+  },
+  "Uplift - Hillstrom (real randomized experiment)": {
+    "Qini coefficient - T-learner": 34.47337190237015,
+    "Qini coefficient - S-learner": 53.1074315029036,
+    "Qini coefficient - Random": -9.600079435210423,
+    "Average uplift (visit rate)": 0.06088195726098464
   }
 }
