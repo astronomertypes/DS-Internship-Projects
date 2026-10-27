@@ -21,5 +21,12 @@
     "Qini coefficient - S-learner": 53.1074315029036,
     "Qini coefficient - Random": -9.600079435210423,
     "Average uplift (visit rate)": 0.06088195726098464
+  },
+  "Uplift - Telco (SYNTHETIC treatment)": {
+    "Spearman (estimated vs true uplift)": 0.7301872014582331,
+    "Qini coefficient - uplift model": 79.76704115978409,
+    "Qini coefficient - churn-risk targeting": 105.26094435386341,
+    "Qini coefficient - random": 2.4375722213962048,
+    "Reference discount (%)": 20
   }
 }
