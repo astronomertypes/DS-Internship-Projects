@@ -28,5 +28,14 @@
     "Qini coefficient - churn-risk targeting": 105.26094435386341,
     "Qini coefficient - random": 2.4375722213962048,
     "Reference discount (%)": 20
+  },
+  "CLV and segmentation": {
+    "Margin assumption": 0.3,
+    "Annual discount rate": 0.1,
+    "Horizon (months)": 24,
+    "Mean CLV": 345.0783305802623,
+    "Median CLV": 339.21712574103566,
+    "Chosen k": 3,
+    "Silhouette (chosen k)": 0.39443319680300015
   }
 }
