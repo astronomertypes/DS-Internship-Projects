@@ -1,0 +1,30 @@
+flowchart LR
+    subgraph DATA["Data layer"]
+        A["Telco CSV<br/>(Kaggle, 7,043 rows)"] -->|"src/load_data.py"| B[("PostgreSQL<br/>customers_raw")]
+        B --> C["SQL view<br/>customers_features<br/>(sql/features.sql)"]
+        H["Hillstrom CSV<br/>(randomized email experiment)"]
+    end
+
+    subgraph MODEL["Modelling layer"]
+        C --> D["LightGBM churn model + SHAP<br/>src/churn_model.py"]
+        C --> E["Kaplan-Meier + Cox<br/>src/survival.py"]
+        D -->|"churn_oof.csv<br/>(out-of-fold churn probability)"| F["Uplift on Telco<br/>(SYNTHETIC treatment)<br/>src/uplift_telco_synthetic.py"]
+        E -->|"cox.joblib<br/>(survival curves)"| G["CLV + k-means segments<br/>src/clv.py"]
+        F -->|"uplift_scores.csv"| G
+        D -->|"churn_oof.csv"| G
+        H --> K["Uplift validation on real data<br/>src/uplift_hillstrom.py"]
+    end
+
+    subgraph SERVE["Serving layer"]
+        G -->|"customer_scores.csv<br/>+ table customer_scores"| I["Streamlit ROI simulator<br/>app/streamlit_app.py"]
+    end
+
+    subgraph QA["Quality and reporting"]
+        D --> R["docs/results.json"]
+        E --> R
+        F --> R
+        K --> R
+        G --> R
+        R -->|"src/make_results_md.py"| M["docs/results.md"]
+        T["tests/test_core.py<br/>(pytest)"] --> TR["docs/test_results.txt"]
+    end

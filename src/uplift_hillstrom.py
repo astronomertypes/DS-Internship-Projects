@@ -41,13 +41,26 @@ for name, m in models.items():
 scores["Random"] = np.random.default_rng(42).random(len(X_te))
 
 # Qini curves
+plt.style.use("default")   # undo the style that causalml sets on import
 x = np.arange(1, len(y_te) + 1) / len(y_te)
-plt.figure(figsize=(7, 5))
+colors = {"T-learner": "#1f77b4", "S-learner": "#d62728", "Random": "#7f7f7f"}
+fig, ax = plt.subplots(figsize=(9, 6))
 for name, s in scores.items():
-    plt.plot(x, qini_curve(y_te, t_te, s), label=name)
-plt.xlabel("Fraction of customers targeted"); plt.ylabel("Cumulative incremental visits")
-plt.title("Qini curves (Hillstrom, test set)"); plt.legend()
-plt.savefig("docs/qini_hillstrom.png", dpi=150); plt.close()
+    q = qini_curve(y_te, t_te, s)
+    ax.plot(x, q, label=("Random scores (one draw)" if name == "Random" else name),
+            color=colors[name], linewidth=2.2 if name != "Random" else 1.5,
+            alpha=0.6 if name == "Random" else 1.0)
+total_gain = qini_curve(y_te, t_te, scores["T-learner"])[-1]
+ax.plot([0, 1], [0, total_gain], linestyle="--", color="black", linewidth=1.3,
+        label="Expected random targeting")
+ax.set_xlabel("Fraction of customers targeted (best-scored first)", fontsize=12)
+ax.set_ylabel("Cumulative incremental website visits", fontsize=12)
+ax.set_title("Qini curves on the Hillstrom randomized experiment (test set)", fontsize=13)
+ax.grid(alpha=0.3)
+ax.legend(loc="upper left", fontsize=11)
+fig.tight_layout()
+fig.savefig("docs/qini_hillstrom.png", dpi=200, bbox_inches="tight", facecolor="white")
+plt.close(fig)
 
 # Decile table for the T-learner: observed uplift should fall from decile 1 to 10
 d = pd.DataFrame({"y": y_te, "t": t_te, "s": scores["T-learner"]})
