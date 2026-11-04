@@ -51,3 +51,17 @@ def save_metrics(row):
         new = pd.concat([old[old["model"] != row["model"]], new], ignore_index=True)
     new.to_csv(f, index=False)
     print(new.round(4).to_string(index=False))
+
+# ---- Windows fix: make Prophet's Stan binary find its own tbb.dll ----
+import os
+
+def _fix_tbb_path():
+    try:
+        import prophet
+    except ImportError:
+        return
+    for dll in Path(prophet.__file__).parent.rglob("tbb.dll"):
+        os.environ["PATH"] = str(dll.parent) + os.pathsep + os.environ["PATH"]
+        break
+
+_fix_tbb_path()
