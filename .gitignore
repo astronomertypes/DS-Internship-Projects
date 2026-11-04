@@ -1,0 +1,7 @@
+.venv/
+data/raw/
+data/processed/
+outputs/tft_ckpt/
+__pycache__/
+lightning_logs/
+*.ckpt
