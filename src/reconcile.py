@@ -78,13 +78,22 @@ except Exception as e:
     print(f"[warn] mint_wls_struct failed: {e}")
 
 
+# children of every parent node: store -> its items, state -> its stores, total -> its states
+children_of = {}
+for child, parents in hier.items():
+    children_of.setdefault(parents[0], []).append(child)
+
+
+def coherence_by_link(f):
+    """Largest mismatch (units per day) for each link of the hierarchy: parent forecast minus the sum of its children."""
+    links = {"items -> store": stores, "stores -> state": states, "states -> total": ["total"]}
+    return {name: float(max(np.abs(f[p].values - f[children_of[p]].sum(axis=1).values).max() for p in ps))
+            for name, ps in links.items()}
+
+
 def coherence_gap(f):
-    """Largest difference between a store forecast and the sum of its items (0 = perfectly coherent)."""
-    gap = 0.0
-    for s in stores:
-        items = [i for i in bottoms if hier[i] == [s]]
-        gap = max(gap, float(np.abs(f[s].values - f[items].sum(axis=1).values).max()))
-    return gap
+    """Largest mismatch over all links. This is the number saved in the coherence_gap column."""
+    return max(coherence_by_link(f).values())
 
 
 levels = {"total": ["total"], "state": states, "store": stores, "item_store": bottoms}
@@ -96,6 +105,9 @@ for name, f in results.items():
 report = pd.DataFrame(rows)
 report.to_csv(OUT / "reconciliation_metrics.csv", index=False)
 print(report.round(4).to_string(index=False))
+print("\nCoherence gap by link (units per day):")
+for name, f in results.items():
+    print(f"{name:22s}", {k: round(v, 3) for k, v in coherence_by_link(f).items()})
 
 # ---- pick the best coherent method by item-level WAPE and save its bottom level ----
 cand = report[(report["level"] == "item_store") & (report["coherence_gap"] < 1e-3)]

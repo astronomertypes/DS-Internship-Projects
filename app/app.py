@@ -365,7 +365,7 @@ GLOSSARY = [
     ("WAPE", "Total absolute forecast error divided by total actual sales. Lower is better."),
     ("RMSSE", "Error scaled by a 'yesterday = today' forecast. Below 1 means better than that naive rule."),
     ("80% interval", "The range (P10 to P90) expected to contain real sales about 8 times out of 10."),
-    ("Coherence gap", "Largest mismatch between a store forecast and the sum of its items. 0 means all levels add up."),
+    ("Coherence gap", "Largest mismatch between a forecast and the sum of its parts (items to store, stores to state, states to total). 0 means all levels add up."),
     ("Order plan", "OR-Tools picks order quantities for the next 14 days that minimise expected holding plus "
                    "stockout cost under a per-store budget."),
 ]
@@ -410,7 +410,7 @@ app.layout = html.Div(className="page", children=[
          [metrics_table]),
 
     card("Hierarchical reconciliation (Darts)",
-         "WAPE at each level of the hierarchy. A non-zero coherence gap means stores do not add up to their state.",
+        "WAPE at each level of the hierarchy. A non-zero coherence gap means some forecasts do not add up to the level above them.",
          [recon_table]),
 
     card("Inventory policy comparison", "Cost measured against what really sold during the 14-day plan.",
