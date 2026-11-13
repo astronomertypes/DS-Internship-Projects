@@ -1,7 +1,13 @@
+@"
 .venv/
+.vscode/
+__pycache__/
+.pytest_cache/
+lightning_logs/
 data/raw/
 data/processed/
 outputs/tft_ckpt/
-__pycache__/
-lightning_logs/
+outputs_backup/
 *.ckpt
+*.pyc
+"@ | Set-Content .gitignore -Encoding ascii.vscode/
