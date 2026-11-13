@@ -424,7 +424,20 @@ There is no external web API in this project. The "API documentation" is the des
 
 ---
 
-## 13. Data, licence and credits
+## 13. Next steps
+
+- Rolling-origin backtesting over several 28-day windows, and tuning `SPREAD` and `RHO` on earlier windows.
+- Scale to the full M5 dataset (more items, more departments).
+- Estimate real cost, stock and promotion inputs instead of assuming them.
+- Evaluate and use the TFT's own quantiles in the optimizer.
+- Try MinT with a covariance-based method for reconciliation (`mint_cov`), and a conformal method for prediction intervals.
+- Add a rolling re-plan (weekly orders) instead of one 14-day order.
+- Deploy the dashboard publicly and add authentication if needed.
+- Move the dashboard tables from `dash_table.DataTable` to dash-ag-grid before upgrading to a future major Dash version, because `DataTable` is deprecated.
+
+---
+
+## 14. Data, licence and credits
 
 - Data: M5 Forecasting - Accuracy, provided by Walmart through Kaggle. It is used under the competition's terms and is **not** included in this repository. 
 - Libraries: Prophet, LightGBM, Darts, PyTorch Forecasting (PyTorch Lightning), OR-Tools, Plotly Dash, pandas, pytest.
