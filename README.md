@@ -1,12 +1,11 @@
 # Nationwide Demand Forecasting and Inventory Optimization
 
-[NOTE: This README is written in your voice. Every message to you is in square brackets and starts with TODO, CHECK, IDEA or NOTE. Search this file and the files in `docs/` for `[TODO`, `[CHECK`, `[IDEA` and `[NOTE`, deal with each one, then delete it before you submit.]
+An end-to-end data science project on the Walmart M5 sales data (50 food items in 10 stores). It predicts **how many units each store will sell**, with prediction intervals, keeps those forecasts **consistent across items, stores and states**, works out **how much stock to order**, and brings it all together in an interactive Plotly Dash dashboard.
+
+**Project DS-02** · Specialization track: Data Science  
+**Author:** Sayantani Manna · **GitHub:** [@astronomertypes](https://github.com/astronomertypes) · **Repository:** https://github.com/astronomertypes/demand-forecasting
 
 ![Dashboard screenshot](docs/img/dashboard.png)
-
-**Project DS-02 · Data Science track**
-Author: [TODO: your full name] · Program: [TODO: internship / company name] · Submitted: [TODO: date, deadline is 20 November 2026]
-Repository: [TODO: your GitHub URL] · Demo video: [TODO: Google Drive link to the screen recording]
 
 ---
 
@@ -75,8 +74,6 @@ Full numbers, experiment history and diagnostics are in [`docs/RESULTS.md`](docs
 - the last **28 days (25 April to 22 May 2016)** as the test period.
 
 That gives 450,000 rows in `long.parquet` and 14,000 test rows (500 series × 28 days).
-
-[IDEA: if I have time left, rerun the pipeline with more items or a second department by changing `DEPT` and `N_ITEMS` in `src/prepare_data.py`, then add a "scaling" row to the results.]
 
 ### 3.1 Files the pipeline produces
 
@@ -178,7 +175,6 @@ demand-forecasting/
 │   ├── ARCHITECTURE.md             # architecture, design decisions, formulas
 │   ├── DATA_DICTIONARY.md          # every file and column
 │   ├── RESULTS.md                  # all results, experiments, diagnostics
-│   ├── REFLECTION.md               # individual reflection
 │   └── img/dashboard.png           # screenshot used in this README
 ├── data/
 │   ├── raw/                        # M5 files from Kaggle (not committed)
@@ -193,8 +189,9 @@ demand-forecasting/
 │   ├── reconcile.py                # step 6: hierarchical reconciliation (Darts)
 │   ├── optimize.py                 # step 7: OR-Tools order quantities
 │   ├── check_scenarios.py          # diagnostic: are demand scenarios wide enough?
+│   ├── check_tft.py                # diagnostic: bias and interval coverage of the models
 │   └── export_app_data.py          # step 8: copy results into app/data
-├── outputs/                        # predictions, metrics, order plan (see data dictionary)
+├── outputs/                        # predictions, metrics, order plan, saved TFT models (see data dictionary)
 ├── app/
 │   ├── app.py                      # Plotly Dash dashboard
 │   └── data/                       # small files the dashboard reads (committed)
@@ -203,18 +200,16 @@ demand-forecasting/
     └── test_app.py                 # dashboard smoke tests
 ```
 
-[CHECK: compare this tree with your real folder in VS Code. If a file moved or was renamed, fix it here.]
-
 ---
 
 ## 6. Setup and how to run
 
-**Tested on:** Windows with PowerShell, Python 3.12, Darts 0.48.1, Dash 4.5.0 [CHECK: run `pip list` and add the versions of prophet, lightgbm, pytorch-forecasting, torch and ortools. Confirm the Dash version there too]. Training ran on CPU only.
+**Tested on:** Windows with PowerShell and Python 3.12.0. Main library versions: Prophet 1.5.0, LightGBM 4.7.0, PyTorch 2.15.0, PyTorch Lightning 2.6.6, PyTorch Forecasting 1.8.0, Darts 0.48.1, OR-Tools 9.15.6755, Dash 4.5.0, Plotly 7.1.0, pandas 3.0.6, NumPy 2.5.4, scikit-learn 1.9.1, pyarrow 26.0.0 and pytest 9.2.0. All versions are pinned in `requirements.txt`. Training ran on CPU only.
 
 ### 6.1 Install
 
 ```powershell
-git clone [TODO: your GitHub URL]
+git clone https://github.com/astronomertypes/demand-forecasting.git
 cd demand-forecasting
 python -m venv .venv
 .venv\Scripts\Activate.ps1
@@ -224,7 +219,7 @@ pip install -r requirements.txt
 
 If PowerShell refuses to activate the environment, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and try again. On Mac/Linux activate with `source .venv/bin/activate`.
 
-[CHECK: test `pip install -r requirements.txt` in a fresh folder. If it fails, replace this section with the two-step install I originally used: `pip install pandas pyarrow scikit-learn lightgbm prophet ortools dash plotly pytest tqdm` and then `pip install darts pytorch-forecasting`.]
+I tested `pip install -r requirements.txt` in a clean virtual environment on Windows with Python 3.12.0. All packages installed, `pip check` found no conflicts and the key libraries imported.
 
 ### 6.2 Get the data
 
@@ -250,17 +245,17 @@ python app/app.py               # open http://127.0.0.1:8050
 
 | Script | What I saw on my machine |
 |---|---|
-| `baselines.py` | Prophet fits 500 models, run time: TBD |
-| `train_lgbm.py` | run time: TBD |
+| `baselines.py` | about 2 minutes 14 seconds (seasonal naive plus 500 Prophet fits) |
+| `train_lgbm.py` | about 17 seconds |
 | `train_tft.py` | about 76 seconds per epoch, 10 epochs, about 13 minutes on CPU |
-| `reconcile.py` | run time: TBD |
-| `optimize.py` | run time: TBD |
+| `reconcile.py` | about 6 seconds (14 Prophet fits and the reconciliation) |
+| `optimize.py` | about 4 seconds (10 integer programs, one per store) |
 
-[CHECK: replace each `TBD` above with your run time. To time a script in PowerShell, run for example `Measure-Command { python src/train_lgbm.py }` and read the `TotalMinutes` line.]
+Times were measured with `Measure-Command` on my CPU-only machine and include starting Python.
 
 The random seed is fixed (`42`). Re-running `train_tft.py` with 10 epochs reproduced exactly the same metrics (WAPE item-store 0.3919).
 
-Optional diagnostic: `python src/check_scenarios.py` compares the optimizer's demand scenarios with the real forecast errors.
+Optional diagnostics: `python src/check_scenarios.py` compares the optimizer's demand scenarios with the real forecast errors, and `python src/check_tft.py` prints the bias of every model's total forecast and the interval coverage of LightGBM and the TFT.
 
 ### 6.4 Run the dashboard in Docker
 
@@ -282,8 +277,6 @@ I built the image and ran the container successfully, and the dashboard opens at
 | `python app/app.py` says the file does not exist | `app.py` must be in `app/`, not in `app/data/`. |
 | `mkdir` with several folders fails in PowerShell | Use `New-Item -ItemType Directory -Force data\raw, data\processed, outputs, src, app, tests`. |
 | Docker: `port is already allocated` | Use another host port, for example `docker run --rm -p 8051:8050 demand-app`. |
-
-[NOTE: `src/utils.py` also contains a function `_fix_tbb_path()` that I added first. It did not fix the Prophet problem; copying the DLLs did. You can delete that function (and the `import os` above it) or keep it. If you delete it, run `pytest -q` once to be sure nothing else broke.]
 
 ---
 
@@ -373,9 +366,9 @@ pytest -q
 | `tests/test_core.py` (11 tests) | WAPE and RMSSE on known values. Demand scenarios are ordered, non-negative, centred on the mean, and have no spread when the forecast is certain. The cost function is zero when the order matches demand. The optimizer respects the budget and the bounds, orders more with a bigger budget, and orders above the mean when a shortage costs more than a leftover unit. |
 | `tests/test_app.py` (4 tests) | The dashboard layout has the required components. Changing store keeps the selected item. The view returns all five outputs with sorted orders and a highlighted row. An unknown selection does not update the page. |
 
-[CHECK: run `pytest -q` and paste the real result here, for example "15 passed". If you did not create `tests/test_app.py`, delete its row from the table above and use 11 tests instead of 15.]
+Result on my machine: **15 passed, 8 warnings in 5.40 s**. The warnings are deprecation notices, not failures. Dash says that `dash_table.DataTable` will be removed from the built-in components in a future major version (it recommends dash-ag-grid), and a SWIG-based library and an old-style pytest hook in Dash's test plugin raise older notices. The library versions are pinned in `requirements.txt`, so the dashboard keeps working as it is.
 
-Besides unit tests, I ran sanity checks after each step (row counts, no missing values, no negative forecasts or orders, interval ordering) and two diagnostics: a forecast bias check and `src/check_scenarios.py`. They are described in [`docs/RESULTS.md`](docs/RESULTS.md).
+Besides unit tests, I ran sanity checks after each step (row counts, no missing values, no negative forecasts or orders, interval ordering) and three diagnostics: a forecast bias check for the order-plan window, `src/check_scenarios.py` and `src/check_tft.py`. They are described in [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ---
 
@@ -404,13 +397,13 @@ With these costs, a missed sale costs about 9 times more than a leftover unit (0
 ## 11. Limitations
 
 - **Subset only.** 500 series from one department, not the full 30,000.
-- **One test window.** All results come from one 28-day period (and one 14-day order window). A 9% cost difference could change on another window. [IDEA: add a rolling-origin backtest over several windows.]
+- **One test window.** All results come from one 28-day period (and one 14-day order window). A 9% cost difference could change on another window. A rolling-origin backtest is listed under next steps.
 - **`SPREAD` was calibrated on the same window used for scoring**, which flatters the optimization result slightly. A cleaner version would tune it on an earlier window.
 - **Costs, stock and `RHO` are assumptions**, not data.
 - **Promotions are a proxy** based on price drops.
 - **Scenario model is an approximation.** Window-level uncertainty comes from daily intervals combined with an assumed correlation, not from a model of 14-day totals.
-- **The optimizer uses LightGBM's intervals.** I did not evaluate the TFT's intervals. [IDEA: compute the TFT's interval coverage and compare it with LightGBM's 82.3%.]
-- **TFT is small and CPU-trained.** It was not trained on the final 28 training days (they are used as validation and context), and its store-level error is higher than LightGBM's. [IDEA: check whether the TFT median systematically under-predicts store totals.]
+- **The optimizer uses LightGBM's intervals.** I also checked the TFT's own interval: it covered 73.7% of real sales (target 80%) at about the same width as LightGBM's (18.82 against 19.08 units per day), while LightGBM's covered 82.3%. That is why I use LightGBM's.
+- **TFT is small and CPU-trained.** It was not trained on the final 28 training days (they are used as validation and context), and its store-level error is higher than LightGBM's. Its total forecast is 8.2% below the actual sales (LightGBM 4.3% below). Its median point forecast is a plausible reason, but I did not test it.
 - **Reconciliation changes nothing at item level** because bottom-up won.
 - **Order spend is not part of the cost totals.** Cost counts holding and stockout cost only, so comparisons are only fair at equal spend.
 
@@ -427,41 +420,12 @@ With these costs, a missed sale costs about 9 times more than a leftover unit (0
 - **Lesson:** a result that looks good can come from spending more. Always compare at the same budget, and test hypotheses with a quick check before changing code.
 - **Lesson:** more training is not always better. 20 TFT epochs was slightly worse than 10.
 
-[TODO: add 2 or 3 personal lessons in your own words. Also see `docs/REFLECTION.md`.]
-
----
-
-## 13. Next steps
-
-- Rolling-origin backtesting over several 28-day windows, and tuning `SPREAD` and `RHO` on earlier windows.
-- Scale to the full M5 dataset (more items, more departments).
-- Estimate real cost, stock and promotion inputs instead of assuming them.
-- Evaluate and use the TFT's own quantiles in the optimizer.
-- Try MinT with a covariance-based method for reconciliation (`mint_cov`), and a conformal method for prediction intervals.
-- Add a rolling re-plan (weekly orders) instead of one 14-day order.
-- Deploy the dashboard publicly and add authentication if needed.
-
-[IDEA: pick the 2 or 3 next steps you actually want to mention in the 10-minute presentation.]
-
----
-
-## 14. Deliverables checklist
-
-| Deliverable | Where |
-|---|---|
-| Working demo (deployed or screen-recorded) | [TODO: link to the demo video or deployed URL] |
-| GitHub repository with clean commits, README and setup instructions | this repository, setup in section 6 |
-| Architecture diagram and data/API documentation | section 4, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) |
-| Test results and accuracy numbers | section 2, section 9, [`docs/RESULTS.md`](docs/RESULTS.md) |
-| 10-minute final presentation | [TODO: link to the slides] |
-| Individual reflection | [`docs/REFLECTION.md`](docs/REFLECTION.md) |
-
 There is no external web API in this project. The "API documentation" is the description of each script's inputs and outputs and the two dashboard functions in `docs/DATA_DICTIONARY.md` and `docs/ARCHITECTURE.md`.
 
 ---
 
-## 15. Data, licence and credits
+## 13. Data, licence and credits
 
-- Data: M5 Forecasting - Accuracy, provided by Walmart through Kaggle. It is used under the competition's terms and is **not** included in this repository. [CHECK: re-read the Kaggle competition rules page to confirm the data may be used for this purpose and is not redistributed.]
+- Data: M5 Forecasting - Accuracy, provided by Walmart through Kaggle. It is used under the competition's terms and is **not** included in this repository. 
 - Libraries: Prophet, LightGBM, Darts, PyTorch Forecasting (PyTorch Lightning), OR-Tools, Plotly Dash, pandas, pytest.
-- Code licence: [TODO: choose a licence such as MIT and add a `LICENSE` file, or write "all rights reserved" if the company owns the work].
+

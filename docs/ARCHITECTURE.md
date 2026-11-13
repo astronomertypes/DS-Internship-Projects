@@ -65,7 +65,7 @@ flowchart TD
     K --> L
 ```
 
-Rectangles are scripts and rounded boxes are files. The diagnostic script `check_scenarios.py` is not in the diagram: it reads `features.parquet`, `pred_lgbm.parquet` and `pred_lgbm_reconciled.parquet` and only prints numbers.
+Rectangles are scripts and rounded boxes are files. The diagnostic scripts `check_scenarios.py` and `check_tft.py` are not in the diagram: they only read the files above and print numbers.
 
 ---
 
@@ -82,6 +82,7 @@ Rectangles are scripts and rounded boxes are files. The diagnostic script `check
 | `src/reconcile.py` | `features.parquet`, `pred_lgbm.parquet` | `pred_lgbm_reconciled.parquet`, `reconciliation_metrics.csv` | Prophet for the 14 upper nodes, then Darts reconciliation (bottom-up and MinT). Checks that every link of the hierarchy adds up |
 | `src/optimize.py` | `features.parquet`, `pred_lgbm.parquet`, `pred_lgbm_reconciled.parquet` | `order_recommendations.csv`, `inventory_results.csv` | Builds demand scenarios, solves one integer program per store, scores the policies on real sales |
 | `src/check_scenarios.py` | same as `optimize.py` | prints only | Checks whether the demand scenarios are as wide as the real forecast errors |
+| `src/check_tft.py` | `features.parquet`, the four `outputs/pred_*.parquet` files | prints only | Bias of every model's total forecast, and interval coverage and width of LightGBM and the TFT |
 | `src/export_app_data.py` | `features.parquet`, `outputs/*` | `app/data/*` | Collects the small files the dashboard needs |
 | `app/app.py` | `app/data/*` | | The Plotly Dash dashboard |
 | `tests/test_core.py` | `src/utils.py`, `src/optimize.py` | | Unit tests for metrics, scenarios, the cost function and the optimizer |
@@ -326,7 +327,7 @@ The project has no external web API. These are the interfaces between my own scr
 | One global LightGBM model | It learns from all series at once and trains in seconds | Less tuning per item |
 | Features shifted by 28 days or more | One model for all horizons, and no leakage | The most recent 27 days of sales are not used as features |
 | Tweedie loss for LightGBM | Sales are non-negative counts with many zeros | Needs the variance power to be chosen (1.1) |
-| Quantile models for intervals | Simple, and the 80% interval covered 82.3% of real sales | The intervals are not reconciled |
+| Quantile models for intervals | Simple, and LightGBM's 80% interval covered 82.3% of real sales (the TFT's own interval covered 73.7%, so the optimizer uses LightGBM's) | The intervals are not reconciled |
 | Small TFT, 10 epochs, CPU | Fits the time budget (about 76 seconds per epoch) | Probably under-trained. 20 epochs was not better, but a longer run on a GPU was not tried |
 | Reconciliation method chosen by a rule (best item-level WAPE among coherent methods) | Objective, and repeatable | It picked bottom-up, which leaves item forecasts unchanged |
 | 9 demand scenarios per item | 3 scenarios made the solver put most items exactly on a scenario value, and the optimizer lost to a simple baseline | A bigger model, still quick to solve |

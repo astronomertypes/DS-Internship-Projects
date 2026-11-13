@@ -52,7 +52,7 @@ What I take from this:
 - **The TFT is the best model for individual item-store series** (lowest item-level WAPE and RMSSE).
 - **LightGBM is the best once forecasts are added up to the store level**, and it is the only model that beats the naive baseline at both levels.
 - **Prophet barely beats the naive baseline at item level** and is worse at store level. It uses no price information, which is a likely reason (not tested).
-- The TFT's store-level error is higher than LightGBM's. One possible reason is that its point forecast is the median, which tends to sit below the mean for skewed count data, so store totals come out slightly low. I have not tested this. [IDEA: check whether the TFT's store totals are systematically below the actual totals.]
+- The TFT's store-level error is higher than LightGBM's. Its total forecast is 8.2% below the actual sales, against 4.3% for LightGBM (section 8.4). One possible reason is that its point forecast is the median, which tends to sit below the mean for skewed count data. I have not tested this.
 - All numbers come from one 28-day window, and I did not test whether the gap between the TFT and LightGBM (0.3919 versus 0.4097) is statistically meaningful.
 
 ### LightGBM training facts
@@ -85,12 +85,15 @@ More epochs did not help. Early stopping ended the longer run after 15 epochs, a
 
 ## 4. Prediction intervals
 
-| Item | Value |
-|---|---|
-| LightGBM interval | 10% and 90% quantile models, so an 80% interval |
-| Share of real test sales inside the interval | **82.3%** (target 80%) |
+The target is an 80% interval (10% to 90% quantile) at the daily item-store level.
 
-The coverage is close to the target, so the interval is reasonably calibrated at the daily item-store level. The TFT also outputs 10% and 90% quantiles (`lo` and `hi` in `pred_tft.parquet`), but I did not evaluate their coverage. [IDEA: compute the TFT's interval coverage and add a row to this table.]
+| Item | LightGBM | TFT |
+|---|---|---|
+| Method | 10% and 90% quantile models | the network's own 10% and 90% quantile outputs |
+| Share of real test sales inside the interval | **82.3%** | 73.7% |
+| Average width (units per day) | 19.08 | 18.82 |
+
+LightGBM's coverage is close to the 80% target. The TFT's interval has about the same width but covers only 73.7% of real sales, so it is too narrow for this data. That is why the optimizer uses LightGBM's intervals. The TFT was trained for only 10 epochs on a CPU, which may be a reason, but I did not test that. The numbers come from `src/check_tft.py` (section 8.4).
 
 ---
 
@@ -213,6 +216,22 @@ With three scenarios the solver had only three "stops" for each item. I measured
 
 With three scenarios 73% of items sat exactly on a scenario value. That is the pattern I expected if stock is topped up in large steps, which spreads a limited budget badly. With nine scenarios the stock is spread smoothly. This check is not perfect proof, because items with very low volume fall within one unit of a scenario by chance, but together with the improvement in cost it supports the explanation.
 
+### 8.4 Bias of every model (`src/check_tft.py`)
+
+Total forecast divided by total actual sales over the 28 test days. 1.00 means unbiased and below 1 means the model forecasts too little.
+
+| Model | Forecast ÷ actual | Stores under-forecast (of 10) |
+|---|---|---|
+| Seasonal naive | 0.9667 | 5 |
+| Prophet | 0.9891 | 6 |
+| LightGBM | 0.9573 | 9 |
+| TFT | 0.9183 | 9 |
+
+- Every model forecasts below the actual total. The TFT is 8.2% low, LightGBM 4.3%, the seasonal naive 3.3% and Prophet 1.1%.
+- LightGBM and the TFT under-forecast the total in 9 of the 10 stores.
+- The TFT's larger shortfall fits its higher store-level error (0.1293 against 0.1004 for LightGBM). The explanation that its median forecast sits below the mean is plausible, but I have not tested it.
+- The first 14 days, which are the order-plan window, were almost unbiased for LightGBM (0.9998, section 8.1). So its 4.3% shortfall over the full 28 days comes from the second half of the test window.
+
 ---
 
 ## 9. Sanity checks on saved files
@@ -223,9 +242,8 @@ With three scenarios 73% of items sat exactly on a scenario value. That is the p
 | `metrics.csv` contains the model rows and matches the printed tables | Passed |
 | `order_recommendations.csv` has 500 rows, no missing values and no negative orders | Passed (shape `(500, 7)`) |
 | Shape and column names of every processed, output and dashboard file match the data dictionary | Passed (commands in `DATA_DICTIONARY.md`, section 7). Prediction files have 14,000 rows: `(14000, 5)` for LightGBM and TFT, `(14000, 3)` for naive, Prophet and the reconciled forecast |
-| `pred_lgbm.parquet`, `pred_tft.parquet` and `pred_lgbm_reconciled.parquet` have no missing values and 500 series, LightGBM has `lo ≤ pred ≤ hi`, and the reconciled forecast is never negative | Passed |
+| `pred_lgbm.parquet`, `pred_tft.parquet` and `pred_lgbm_reconciled.parquet` have no missing values and 500 series, LightGBM has `lo ≤ pred ≤ hi`, and the reconciled forecast is never negative | Passed (`lgbm 0 True True 500`, `tft 0 True True 500`, `rec 0 True 500`: no missing values, 500 series, `lo ≤ pred ≤ hi` for LightGBM, `lo ≤ hi` and no negative forecasts for the TFT, no negative reconciled forecasts) |
 | Unit tests | 11 tests in `tests/test_core.py` passed. The full `pytest -q` result is in the README, section 9 |
-
 
 ---
 
@@ -242,8 +260,9 @@ With three scenarios 73% of items sat exactly on a scenario value. That is the p
 
 - **They come from one 28-day test window** and one 14-day order window. A different window could give a different ranking or a different cost difference.
 - **The 9.2% cost difference is encouraging, not proof.** `SPREAD` was tuned on the scoring window, and `RHO`, the cost parameters and the stock on hand are assumptions, not data.
+- **The order plan was scored on the least biased part of the test window.** The forecast was almost unbiased over the 14 plan days (0.9998) but under-forecast over the full 28 days (0.9573, section 8.4), so a plan for the later 14 days could look different.
 - **Only 500 series** from one department were used.
 - **The RMSSE is not the official M5 metric**, so these numbers cannot be compared with the competition leaderboard.
 - **Order spend is not part of the cost totals**, so policies are only comparable at equal spend.
 
-[IDEA: the strongest improvement to this document would be a rolling-origin backtest over several 28-day windows, with `SPREAD` and `RHO` tuned on earlier windows and scored on later ones. Add it to Next steps if you do not have time to run it.]
+The strongest improvement would be a rolling-origin backtest over several 28-day windows, with `SPREAD` and `RHO` tuned on earlier windows and scored on later ones. It is listed under next steps in the README.
