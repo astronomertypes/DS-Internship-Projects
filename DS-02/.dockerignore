@@ -1,0 +1,8 @@
+.venv
+.git
+data
+outputs
+tests
+lightning_logs
+__pycache__
+.pytest_cache
